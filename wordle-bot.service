@@ -1,0 +1,15 @@
+[Unit]
+Description=Wordle Discord Bot
+After=network.target
+
+[Service]
+Type=simple
+User=wordle
+WorkingDirectory=/opt/wordle-bot
+EnvironmentFile=/opt/wordle-bot/.env
+ExecStart=/opt/wordle-bot/venv/bin/python bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -63,12 +63,18 @@ async def on_message(message: discord.Message):
         return
 
     wordle_num = extract_wordle_num(message)
+    if wordle_num == 0:
+        print(f"[Wordle Bot] Numéro Wordle introuvable dans le message {message.id}")
+        await message.add_reaction("⚠️")
+        return
+
     ws = week_start()
     saved = 0
 
+    guild_id = str(message.guild.id)
     for user_id, attempts in parse_scores(message.content):
         username = resolve_username(message.guild, user_id)
-        if insert_score(user_id, username, wordle_num, attempts, ws):
+        if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
             saved += 1
 
     if saved:
@@ -79,7 +85,7 @@ async def on_message(message: discord.Message):
 
 @bot.tree.command(name="classement", description="Affiche le classement Wordle de la semaine en cours")
 async def cmd_classement(interaction: discord.Interaction):
-    text = build_leaderboard(week_start())
+    text = build_leaderboard(str(interaction.guild_id), week_start())
     await interaction.response.send_message(text)
 
 
@@ -91,14 +97,14 @@ async def cmd_classement_semaine(interaction: discord.Interaction, date: str):
     except ValueError:
         await interaction.response.send_message("Format invalide. Utilise YYYY-MM-DD (ex: 2025-05-12).", ephemeral=True)
         return
-    text = build_leaderboard(date)
+    text = build_leaderboard(str(interaction.guild_id), date)
     await interaction.response.send_message(text)
 
 
 @bot.tree.command(name="mon-score", description="Affiche tes scores Wordle de la semaine")
 async def cmd_mon_score(interaction: discord.Interaction):
     ws = week_start()
-    rows = get_user_scores(str(interaction.user.id), ws)
+    rows = get_user_scores(str(interaction.guild_id), str(interaction.user.id), ws)
     if not rows:
         await interaction.response.send_message("Aucun score enregistré pour toi cette semaine.", ephemeral=True)
         return
@@ -108,6 +114,58 @@ async def cmd_mon_score(interaction: discord.Interaction):
         score_str = "X/6 *(échec)*" if row["attempts"] == 7 else f"{row['attempts']}/6"
         lines.append(f"• Wordle #{row['wordle_num']} — {score_str}")
     await interaction.response.send_message("\n".join(lines), ephemeral=True)
+
+
+@bot.tree.command(name="backfill", description="[Admin] Retraite les N derniers messages du salon Wordle (défaut: 50)")
+@app_commands.describe(limit="Nombre de messages à relire (1-200)")
+@app_commands.default_permissions(administrator=True)
+async def cmd_backfill(interaction: discord.Interaction, limit: int = 50):
+    if not 1 <= limit <= 200:
+        await interaction.response.send_message("Le nombre de messages doit être entre 1 et 200.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+    channel = bot.get_channel(WORDLE_CHANNEL_ID)
+    if not channel:
+        await interaction.followup.send("Canal Wordle introuvable.", ephemeral=True)
+        return
+
+    guild_id = str(interaction.guild_id)
+    inserted = 0
+    skipped = 0
+
+    async for msg in channel.history(limit=limit):
+        if not msg.author.bot or msg.author.name != WORDLE_BOT_NAME:
+            continue
+        if not is_wordle_results(msg.content):
+            continue
+        wordle_num = extract_wordle_num(msg)
+        if wordle_num == 0:
+            continue
+        ws = week_start(msg.created_at)
+        for user_id, attempts in parse_scores(msg.content):
+            username = resolve_username(interaction.guild, user_id)
+            if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
+                inserted += 1
+            else:
+                skipped += 1
+
+    await interaction.followup.send(
+        f"Backfill terminé : **{inserted}** score(s) ajouté(s), {skipped} déjà existant(s).",
+        ephemeral=True,
+    )
+
+
+@bot.tree.command(name="forcer-classement", description="[Admin] Poste le classement de la semaine en cours dans le salon leaderboard")
+@app_commands.default_permissions(administrator=True)
+async def cmd_forcer_classement(interaction: discord.Interaction):
+    channel = bot.get_channel(LEADERBOARD_CHANNEL_ID)
+    if not channel:
+        await interaction.response.send_message("Canal leaderboard introuvable.", ephemeral=True)
+        return
+    text = build_leaderboard(str(interaction.guild_id), week_start())
+    await channel.send(text)
+    await interaction.response.send_message("Classement posté.", ephemeral=True)
 
 
 # ── Scheduled task ─────────────────────────────────────────────────────────────
@@ -125,7 +183,7 @@ async def weekly_leaderboard():
 
     # Since we fire on Monday, 7 days ago is exactly last Monday
     last_monday = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-    text = build_leaderboard(last_monday)
+    text = build_leaderboard(str(channel.guild.id), last_monday)
     await channel.send(text)
 
 

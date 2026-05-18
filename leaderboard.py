@@ -3,8 +3,8 @@ from database import get_weekly_rows
 MEDALS = ["🥇", "🥈", "🥉"]
 
 
-def build_leaderboard(week_start: str) -> str:
-    rows = get_weekly_rows(week_start)
+def build_leaderboard(guild_id: str, week_start: str) -> str:
+    rows = get_weekly_rows(guild_id, week_start)
     if not rows:
         return f"Aucun score enregistré pour la semaine du **{week_start}**."
 
