@@ -5,24 +5,17 @@ import aiohttp
 import discord
 
 # ── Colors ────────────────────────────────────────────────────────
-BG       = (43,  45,  49)
-BG_ALT   = (52,  55,  60)
-TEXT     = (220, 221, 222)
-SUB      = (148, 155, 164)
-GREEN    = (83,  141, 78)
-GOLD     = (255, 200,   0)
-SILVER   = (192, 192, 192)
-BRONZE   = (180, 120,  60)
-RANK_CLR = {1: GOLD, 2: SILVER, 3: BRONZE}
+BG       = (22,  22,  26)
+BLOCK    = (32,  32,  38)
+BLOCK_S  = (26,  26,  30)   # slightly darker for side shadow
+GOLD     = (255, 196,  0)
+SILVER   = (210, 210, 210)
+BRONZE   = (188, 120,  50)
+WHITE    = (240, 240, 240)
+GRAY     = (160, 160, 165)
+RANK_CLR = {0: GOLD, 1: SILVER, 2: BRONZE}
 
-# ── Layout ────────────────────────────────────────────────────────
-W         = 480
-LEFT_BAR  = 5
-PAD       = 16
-HEADER_H  = 68
-PODIUM_H  = 230
-ROW_H     = 66
-FOOTER_H  = 32
+W, H = 620, 420
 
 
 def _font(size, bold=False):
@@ -44,51 +37,48 @@ async def _circle(session, url, size):
             data = await r.read()
         av = Image.open(io.BytesIO(data)).convert("RGBA").resize((size, size), Image.LANCZOS)
     except Exception:
-        av = Image.new("RGBA", (size, size), (80, 80, 80, 255))
+        av = Image.new("RGBA", (size, size), (70, 70, 75, 255))
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
-    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    out.paste(av, mask=mask)
-    return out
+    ring = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    ring.paste(av, mask=mask)
+    return ring
 
 
-def _cx_text(draw, cx, y, text, font, color):
+def _cx(draw, cx, y, text, font, color):
     bb = draw.textbbox((0, 0), text, font=font)
     draw.text((cx - (bb[2] - bb[0]) // 2, y), text, font=font, fill=color)
 
 
-def _truncate(draw, text, font, max_w):
-    while draw.textbbox((0, 0), text, font=font)[2] > max_w and len(text) > 2:
-        text = text[:-1]
-    return text if draw.textbbox((0, 0), text, font=font)[2] <= max_w else text + "…"
-
-
-async def build_leaderboard_image(rows, week_start: str, bot: discord.Client) -> discord.File:
-    total_wordles = rows[0]["total_wordles"] if rows else 0
-    H = HEADER_H + PODIUM_H + 2 + len(rows) * ROW_H + FOOTER_H
-
+async def build_podium_image(rows, week_start: str, bot: discord.Client) -> discord.File:
     img = Image.new("RGB", (W, H), BG)
-    draw = ImageDraw.Draw(img)
+    d   = ImageDraw.Draw(img)
 
-    fT  = _font(17, bold=True)   # title
-    fS  = _font(11)              # subtitle
-    fN  = _font(15, bold=True)   # player name
-    fSt = _font(12)              # stats
-    fR  = _font(22, bold=True)   # rank big
-    fP  = _font(14, bold=True)   # points label
-    fBl = _font(13, bold=True)   # podium block label
+    fTitle  = _font(16)
+    fName   = _font(17, bold=True)
+    fPts    = _font(14)
+    fRank   = _font(52, bold=True)
 
-    # ── Left green bar ─────────────────────────────────────────────
-    draw.rectangle([(0, 0), (LEFT_BAR, H)], fill=GREEN)
+    # Title
+    title = f"Classement Wordle — {week_start}"
+    _cx(d, W // 2, 14, title, fTitle, GRAY)
 
-    # ── Header ─────────────────────────────────────────────────────
-    draw.text((PAD + LEFT_BAR, 13), f"Classement Wordle — {week_start}", font=fT, fill=TEXT)
-    draw.text((PAD + LEFT_BAR, 42), f"{total_wordles} Wordle(s) · Moins de points = meilleur · Absent/Échec = +7", font=fS, fill=SUB)
-    draw.line([(LEFT_BAR, HEADER_H - 1), (W, HEADER_H - 1)], fill=(60, 62, 67))
+    # Slot order: 2nd (left), 1st (center), 3rd (right)
+    order = [1, 0, 2]
 
-    # ── Fetch users ─────────────────────────────────────────────────
+    # Block geometry
+    BW     = 170           # block width
+    GAP    = 12            # gap between blocks
+    BOTTOM = H - 30        # bottom of all blocks
+    BH     = [180, 230, 140]   # block heights: 2nd, 1st, 3rd
+    AV_SZ  = 82
+    AV_GAP = 12
+
+    start_x = (W - 3 * BW - 2 * GAP) // 2
+
+    # Fetch user info
     uinfo: dict[str, tuple[str, str | None]] = {}
-    for row in rows:
+    for row in rows[:3]:
         try:
             u = await bot.fetch_user(int(row["user_id"]))
             url = str(u.display_avatar.replace(size=128).url) if u.display_avatar else None
@@ -97,113 +87,69 @@ async def build_leaderboard_image(rows, week_start: str, bot: discord.Client) ->
             uinfo[row["user_id"]] = (row["username"], None)
 
     async with aiohttp.ClientSession() as session:
-        av64: dict[str, Image.Image] = {}
-        av40: dict[str, Image.Image] = {}
-        lg_tasks = {uid: _circle(session, info[1], 64) for uid, info in uinfo.items() if info[1]}
-        sm_tasks = {uid: _circle(session, info[1], 40) for uid, info in uinfo.items() if info[1]}
-        for uid, r in zip(lg_tasks, await asyncio.gather(*lg_tasks.values(), return_exceptions=True)):
+        av_tasks = {}
+        for row in rows[:3]:
+            uid = row["user_id"]
+            if uid in uinfo and uinfo[uid][1]:
+                av_tasks[uid] = _circle(session, uinfo[uid][1], AV_SZ)
+        results = await asyncio.gather(*av_tasks.values(), return_exceptions=True)
+        avatars = {}
+        for uid, r in zip(av_tasks.keys(), results):
             if not isinstance(r, Exception):
-                av64[uid] = r
-        for uid, r in zip(sm_tasks, await asyncio.gather(*sm_tasks.values(), return_exceptions=True)):
-            if not isinstance(r, Exception):
-                av40[uid] = r
+                avatars[uid] = r
 
-    # ── Podium (2nd left · 1st center · 3rd right) ─────────────────
-    PT = HEADER_H
-    slot_w = (W - LEFT_BAR) // 3
-    order = [1, 0, 2]        # 2nd, 1st, 3rd
-    blk_h = {0: 100, 1: 75, 2: 55}   # block heights (slot index)
-    av_sz = {0: 64, 1: 56, 2: 48}
-
-    for si, ri in enumerate(order):
+    for slot, ri in enumerate(order):
         if ri >= len(rows):
             continue
+
         row = rows[ri]
         uid = row["user_id"]
-        rc  = RANK_CLR.get(ri + 1, SUB)
-        bh  = blk_h[si]
-        avs = av_sz[si]
-        cx  = LEFT_BAR + slot_w * si + slot_w // 2
+        rc  = RANK_CLR[ri]
+        bh  = BH[slot]
+        bx  = start_x + slot * (BW + GAP)
+        by  = BOTTOM - bh
+        cx  = bx + BW // 2
 
-        # Block
-        bx0 = LEFT_BAR + slot_w * si + 8
-        bx1 = LEFT_BAR + slot_w * (si + 1) - 8
-        by0 = PT + PODIUM_H - bh
-        draw.rectangle([(bx0, by0), (bx1, PT + PODIUM_H)], fill=tuple(max(c - 170, 0) for c in rc))
-        draw.rectangle([(bx0, by0), (bx1, PT + PODIUM_H)], outline=rc, width=2)
-        _cx_text(draw, cx, by0 + 6, f"{ri + 1}{'er' if ri == 0 else 'ème'}", fBl, rc)
+        # ── Block body ────────────────────────────────────────────
+        d.rectangle([(bx, by), (bx + BW, BOTTOM)], fill=BLOCK)
 
-        # Avatar
-        av_y = by0 - avs - 6
-        av_x = cx - avs // 2
-        src  = (av64.get(uid) or av40.get(uid))
-        if src:
-            src_r = src.resize((avs, avs), Image.LANCZOS)
-            img.paste(src_r, (av_x, av_y), src_r)
+        # Gold/silver/bronze top cap (thick line + slight 3D)
+        cap_h = 10
+        d.rectangle([(bx, by), (bx + BW, by + cap_h)], fill=rc)
+        # Side shadow (right side darker)
+        d.rectangle([(bx + BW - 5, by + cap_h), (bx + BW, BOTTOM)], fill=BLOCK_S)
+
+        # Rank number inside block
+        _cx(d, cx - 3, by + bh // 2 - 35, str(ri + 1), fRank, rc)
+
+        # Points inside block
+        pts_str = f"{row['total_points']} pts"
+        _cx(d, cx, by + bh // 2 + 22, pts_str, fPts, GRAY)
+
+        # ── Avatar above block ─────────────────────────────────────
+        av_top = by - AV_GAP - AV_SZ
+        av_left = cx - AV_SZ // 2
+
+        # Avatar ring
+        ring_sz = AV_SZ + 6
+        ring_img = Image.new("RGBA", (ring_sz, ring_sz), (0, 0, 0, 0))
+        ImageDraw.Draw(ring_img).ellipse((0, 0, ring_sz - 1, ring_sz - 1), fill=(*rc, 255))
+        img.paste(ring_img, (av_left - 3, av_top - 3),
+                  ring_img.split()[3] if ring_img.mode == "RGBA" else None)
+
+        if uid in avatars:
+            img.paste(avatars[uid], (av_left, av_top), avatars[uid])
         else:
-            draw.ellipse([(av_x, av_y), (av_x + avs, av_y + avs)], fill=(80, 80, 80))
+            d.ellipse([(av_left, av_top), (av_left + AV_SZ, av_top + AV_SZ)], fill=(70, 70, 75))
 
-        # Name
+        # ── Name above avatar ─────────────────────────────────────
         name = uinfo.get(uid, (row["username"], None))[0]
-        name = _truncate(draw, name, fP, slot_w - 12)
-        _cx_text(draw, cx, av_y - 22, name, fP, TEXT)
-
-        # Points
-        _cx_text(draw, cx, av_y - 42, f"{row['total_points']} pts", fBl, rc)
-
-    # Divider
-    dy = PT + PODIUM_H
-    draw.line([(LEFT_BAR, dy), (W, dy)], fill=GREEN, width=2)
-
-    # ── Ranked list ─────────────────────────────────────────────────
-    medals = {0: "1.", 1: "2.", 2: "3."}
-    for i, row in enumerate(rows):
-        y   = dy + 2 + i * ROW_H
-        uid = row["user_id"]
-        rc  = RANK_CLR.get(i + 1, SUB)
-
-        if i % 2 == 1:
-            draw.rectangle([(LEFT_BAR, y), (W, y + ROW_H)], fill=BG_ALT)
-
-        x = PAD + LEFT_BAR
-
-        # Rank
-        rt = medals.get(i, f"{i + 1}.")
-        bb = draw.textbbox((0, 0), rt, font=fSt)
-        draw.text((x, y + (ROW_H - (bb[3] - bb[1])) // 2), rt, font=fSt, fill=rc)
-        x += 30
-
-        # Avatar 40px
-        av_y2 = y + (ROW_H - 40) // 2
-        if uid in av40:
-            img.paste(av40[uid], (x, av_y2), av40[uid])
-        else:
-            draw.ellipse([(x, av_y2), (x + 40, av_y2 + 40)], fill=(80, 80, 80))
-        x += 48
-
-        # Name
-        name = uinfo.get(uid, (row["username"], None))[0]
-        draw.text((x, y + 9), name, font=fN, fill=TEXT)
-
-        # Stats
-        best = str(row["best"]) if row["best"] < 7 else "X"
-        missed = row["total_wordles"] - row["played"]
-        stats = f"{row['total_points']} pts · {row['played']}/{total_wordles} · meilleur {best}/6"
-        if missed:
-            stats += f" · {missed} absent(s)"
-        draw.text((x, y + 34), stats, font=fSt, fill=SUB)
-
-        # Points right
-        pts = f"{row['total_points']}"
-        bb2 = draw.textbbox((0, 0), pts, font=fR)
-        draw.text((W - PAD - (bb2[2] - bb2[0]), y + (ROW_H - (bb2[3] - bb2[1])) // 2), pts, font=fR, fill=rc)
-
-    # ── Footer ─────────────────────────────────────────────────────
-    fy = dy + 2 + len(rows) * ROW_H
-    draw.line([(LEFT_BAR, fy), (W, fy)], fill=(60, 62, 67))
-    draw.text((PAD + LEFT_BAR, fy + 9), "WordleRankingBot", font=fS, fill=SUB)
+        if len(name) > 16:
+            name = name[:15] + "…"
+        name_y = av_top - 30
+        _cx(d, cx, name_y, name, fName, WHITE)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
-    return discord.File(buf, filename="classement.png")
+    return discord.File(buf, filename="podium.png")
