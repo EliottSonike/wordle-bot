@@ -1,4 +1,5 @@
 import re
+from datetime import date, timedelta
 
 # Matches lines like: "3/6: <@123456>", "👑 3/6: <@123> <@456>", "X/6: <@789>"
 _SCORE_LINE = re.compile(r"(\d|X)/6\*?\s*:\s*((?:<@!?\d+>\s*)+)", re.IGNORECASE)
@@ -11,6 +12,9 @@ _TRIGGER = re.compile(r"here are (yesterday'?s?|today'?s?) results", re.IGNORECA
 
 # Extracts Wordle number from embed title/description e.g. "Wordle No. 1381"
 _WORDLE_NUM = re.compile(r"wordle\s+no\.?\s*(\d+)", re.IGNORECASE)
+
+# Wordle No. 0 = June 19, 2021
+_WORDLE_EPOCH = date(2021, 6, 19)
 
 
 def is_wordle_results(content: str) -> bool:
@@ -35,11 +39,17 @@ def parse_scores(content: str) -> list:
 
 
 def extract_wordle_num(message) -> int:
-    """Try to find the Wordle number in message embeds, fallback to 0."""
+    """Try to find the Wordle number in message embeds, fallback to date calculation."""
     for embed in message.embeds:
         for text in (embed.title, embed.description, embed.footer.text if embed.footer else None):
             if text:
                 m = _WORDLE_NUM.search(text)
                 if m:
                     return int(m.group(1))
+    # Fallback: derive from message date
+    m = _TRIGGER.search(message.content)
+    if m:
+        msg_date = message.created_at.date()
+        puzzle_date = msg_date - timedelta(days=1) if "yesterday" in m.group(1).lower() else msg_date
+        return (puzzle_date - _WORDLE_EPOCH).days
     return 0
