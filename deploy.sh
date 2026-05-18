@@ -9,7 +9,7 @@ SERVICE_USER="wordle"
 
 echo "==> Installation des dépendances système..."
 apt-get update -q
-apt-get install -y python3 python3-venv python3-pip
+apt-get install -y python3 python3-venv python3-pip fonts-dejavu-core
 
 echo "==> Création de l'utilisateur système '$SERVICE_USER'..."
 id "$SERVICE_USER" &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER"

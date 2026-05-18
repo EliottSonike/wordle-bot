@@ -56,10 +56,10 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
     d   = ImageDraw.Draw(img)
 
     S = SCALE
-    fTitle  = _font(38 * S)
-    fName   = _font(46 * S, bold=True)
-    fPts    = _font(36 * S)
-    fRank   = _font(120 * S, bold=True)
+    fTitle  = _font(16 * S)
+    fName   = _font(22 * S, bold=True)
+    fPts    = _font(18 * S)
+    fRank   = _font(76 * S, bold=True)
 
     # Title
     title = f"Classement Wordle — {week_start}"
@@ -136,9 +136,12 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
         else:
             d.ellipse([(av_left, av_top), (av_left + AV_SZ, av_top + AV_SZ)], fill=(70, 70, 75))
 
-        name = uinfo.get(uid, (row["username"], None))[0]
-        if len(name) > 16:
-            name = name[:15] + "…"
+        name     = uinfo.get(uid, (row["username"], None))[0]
+        max_name = BW - 10 * S
+        while d.textbbox((0, 0), name, font=fName)[2] > max_name and len(name) > 1:
+            name = name[:-1]
+        if d.textbbox((0, 0), name, font=fName)[2] > max_name:
+            name = name + "…"
         _cx(d, cx, av_top - 30 * S, name, fName, WHITE)
 
     # Downscale 2x → 1x with LANCZOS for smooth antialiased text
