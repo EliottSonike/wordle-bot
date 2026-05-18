@@ -141,11 +141,14 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 50):
     inserted = 0
     skipped = 0
 
+    total = 0
     bot_messages = 0
     async for msg in channel.history(limit=limit):
+        total += 1
         if msg.author.bot:
             bot_messages += 1
             print(f"[Backfill] Bot msg: author={msg.author.name!r} trigger={is_wordle_results(msg.content)}")
+    print(f"[Backfill] Total messages vus: {total}, dont bots: {bot_messages}")
         if not msg.author.bot or msg.author.name != WORDLE_BOT_NAME:
             continue
         if not is_wordle_results(msg.content):
