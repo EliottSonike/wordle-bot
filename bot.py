@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from database import init_db, insert_score, get_user_scores
 from parser import is_wordle_results, parse_scores, extract_wordle_num
 from leaderboard import build_leaderboard
-from image_leaderboard import build_leaderboard_image
 
 load_dotenv()
 
@@ -93,14 +92,8 @@ async def on_message(message: discord.Message):
 
 @bot.tree.command(name="classement", description="Affiche le classement Wordle de la semaine en cours")
 async def cmd_classement(interaction: discord.Interaction):
-    await interaction.response.defer()
-    from database import get_weekly_rows
-    rows = get_weekly_rows(str(interaction.guild_id), week_start())
-    if not rows:
-        await interaction.followup.send(f"Aucun score enregistré pour la semaine du **{week_start()}**.")
-        return
-    file = await build_leaderboard_image(rows, week_start(), bot)
-    await interaction.followup.send(file=file)
+    embed = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
+    await interaction.response.send_message(embed=embed)
 
 
 @bot.tree.command(name="classement-semaine", description="Affiche le classement d'une semaine précise (format YYYY-MM-DD)")
@@ -111,14 +104,8 @@ async def cmd_classement_semaine(interaction: discord.Interaction, date: str):
     except ValueError:
         await interaction.response.send_message("Format invalide. Utilise YYYY-MM-DD (ex: 2025-05-12).", ephemeral=True)
         return
-    await interaction.response.defer()
-    from database import get_weekly_rows
-    rows = get_weekly_rows(str(interaction.guild_id), date)
-    if not rows:
-        await interaction.followup.send(f"Aucun score enregistré pour la semaine du **{date}**.")
-        return
-    file = await build_leaderboard_image(rows, date, bot)
-    await interaction.followup.send(file=file)
+    embed = build_leaderboard(str(interaction.guild_id), date, interaction.guild)
+    await interaction.response.send_message(embed=embed)
 
 
 @bot.tree.command(name="mon-score", description="Affiche tes scores Wordle de la semaine")
@@ -184,13 +171,9 @@ async def cmd_forcer_classement(interaction: discord.Interaction):
     if not channel:
         await interaction.response.send_message("Canal leaderboard introuvable.", ephemeral=True)
         return
-    await interaction.response.defer(ephemeral=True)
-    from database import get_weekly_rows
-    rows = get_weekly_rows(str(interaction.guild_id), week_start())
-    if rows:
-        file = await build_leaderboard_image(rows, week_start(), bot)
-        await channel.send(file=file)
-    await interaction.followup.send("Classement posté.", ephemeral=True)
+    embed = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
+    await channel.send(embed=embed)
+    await interaction.response.send_message("Classement posté.", ephemeral=True)
 
 
 # ── Scheduled task ─────────────────────────────────────────────────────────────
@@ -208,11 +191,8 @@ async def weekly_leaderboard():
 
     # Since we fire on Monday, 7 days ago is exactly last Monday
     last_monday = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-    from database import get_weekly_rows
-    rows = get_weekly_rows(str(channel.guild.id), last_monday)
-    if rows:
-        file = await build_leaderboard_image(rows, last_monday, bot)
-        await channel.send(file=file)
+    embed = build_leaderboard(str(channel.guild.id), last_monday, channel.guild)
+    await channel.send(embed=embed)
 
 
 @weekly_leaderboard.before_loop
