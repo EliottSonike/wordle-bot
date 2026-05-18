@@ -12,6 +12,69 @@ def _name(row, guild):
     return f"**{row['username']}**"
 
 
+def _display_name(row, guild):
+    if guild:
+        m = guild.get_member(int(row["user_id"]))
+        if m:
+            return m.display_name
+    return row["username"]
+
+
+def _podium(rows, guild):
+    """Draws an ASCII podium for the top 3."""
+    order  = [1, 0, 2]   # 2nd  1st  3rd (left, center, right)
+    labels = ["2ème", "1er", "3ème"]
+    inner  = [3, 5, 2]   # inner height of each block
+
+    names = []
+    pts   = []
+    for ri in order:
+        if ri < len(rows):
+            n = _display_name(rows[ri], guild)
+            names.append(n[:14])
+            pts.append(f"{rows[ri]['total_points']} pts")
+        else:
+            names.append("—")
+            pts.append("")
+
+    cw = max(max(len(n) for n in names), max(len(p) for p in pts),
+             max(len(l) for l in labels)) + 2
+
+    def box(label, p, h):
+        b  = ["┌" + "─" * cw + "┐"]
+        b += ["│" + label.center(cw) + "│"]
+        b += ["│" + " " * cw + "│"] * (h - 1)
+        b += ["│" + p.center(cw) + "│"]
+        b += ["└" + "─" * cw + "┘"]
+        return b
+
+    cols = [box(l, p, h) for l, p, h in zip(labels, pts, inner)]
+    bh   = [len(c) for c in cols]
+    top  = max(bh)
+
+    padded = []
+    for i, (col, h) in enumerate(zip(cols, bh)):
+        pad = top - h
+        empty = " " * (cw + 2)
+        above = [empty] * pad
+        if pad:
+            above[-1] = names[i].center(cw + 2)
+        padded.append(above + col)
+
+    # add name row above tallest column too
+    for i, p in enumerate(padded):
+        if len(p) == top:
+            padded[i] = [names[i].center(cw + 2)] + p
+
+    max_h = max(len(p) for p in padded)
+    for p in padded:
+        while len(p) < max_h:
+            p.insert(0, " " * (cw + 2))
+
+    lines = [" ".join(col[r] for col in padded) for r in range(max_h)]
+    return "```\n" + "\n".join(lines) + "\n```"
+
+
 def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = None) -> discord.Embed:
     rows = get_weekly_rows(guild_id, week_start)
 
@@ -25,29 +88,7 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
 
     total_wordles = rows[0]["total_wordles"]
     embed.title = f"🏆 Classement Wordle — semaine du {week_start}"
-    embed.description = f"_{total_wordles} Wordle(s) joués cette semaine_"
-
-    # ── Podium (3 inline fields : 2nd | 1st | 3rd) ──────────────────
-    podium_order = [1, 0, 2]
-    podium_icons = {0: "🥇", 1: "🥈", 2: "🥉"}
-    podium_labels = {0: "1ᵉʳ", 1: "2ᵉ", 2: "3ᵉ"}
-
-    for si in podium_order:
-        if si >= len(rows):
-            embed.add_field(name="​", value="​", inline=True)
-            continue
-        row = rows[si]
-        best_str = "X" if row["best"] == 7 else str(row["best"])
-        name = _name(row, guild)
-        value = f"{name}\n**{row['total_points']} pts**\nmeilleur {best_str}/6"
-        embed.add_field(
-            name=f"{podium_icons[si]} {podium_labels[si]} place",
-            value=value,
-            inline=True,
-        )
-
-    # Separator
-    embed.add_field(name="​", value="─" * 36, inline=False)
+    embed.description = f"_{total_wordles} Wordle(s) joués cette semaine_\n{_podium(rows, guild)}"
 
     # ── Full list ────────────────────────────────────────────────────
     lines = []
