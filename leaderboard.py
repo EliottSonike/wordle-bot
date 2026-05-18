@@ -79,7 +79,7 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
     rows = get_weekly_rows(guild_id, week_start)
 
     embed = discord.Embed(color=WORDLE_GREEN)
-    embed.set_footer(text=f"Semaine du {week_start} • Le moins de points gagne • Absent/Échec = +7")
+    embed.set_footer(text=f"Semaine du {week_start} • Absent/Échec = +7 pts")
 
     if not rows:
         embed.title = "🏆 Classement Wordle"

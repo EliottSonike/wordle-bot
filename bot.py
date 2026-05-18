@@ -97,11 +97,10 @@ async def _send_leaderboard(interaction: discord.Interaction, ws: str):
     if not rows:
         await interaction.followup.send(f"Aucun score enregistré pour la semaine du **{ws}**.")
         return
-    podium      = await build_podium_image(rows, ws, bot)
-    embed_img   = discord.Embed(color=0x538D4E)
-    embed_img.set_image(url="attachment://podium.png")
-    embed_list  = build_leaderboard(str(interaction.guild_id), ws, interaction.guild)
-    await interaction.followup.send(file=podium, embeds=[embed_img, embed_list])
+    podium = await build_podium_image(rows, ws, bot)
+    embed  = build_leaderboard(str(interaction.guild_id), ws, interaction.guild)
+    embed.set_image(url="attachment://podium.png")
+    await interaction.followup.send(file=podium, embed=embed)
 
 
 @bot.tree.command(name="classement", description="Affiche le classement Wordle de la semaine en cours")
@@ -189,11 +188,10 @@ async def cmd_forcer_classement(interaction: discord.Interaction):
     from database import get_weekly_rows
     rows = get_weekly_rows(str(interaction.guild_id), week_start())
     if rows:
-        podium     = await build_podium_image(rows, week_start(), bot)
-        embed_img  = discord.Embed(color=0x538D4E)
-        embed_img.set_image(url="attachment://podium.png")
-        embed_list = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
-        await channel.send(file=podium, embeds=[embed_img, embed_list])
+        podium = await build_podium_image(rows, week_start(), bot)
+        embed  = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
+        embed.set_image(url="attachment://podium.png")
+        await channel.send(file=podium, embed=embed)
     await interaction.followup.send("Classement posté.", ephemeral=True)
 
 
@@ -215,11 +213,10 @@ async def weekly_leaderboard():
     from database import get_weekly_rows
     rows = get_weekly_rows(str(channel.guild.id), last_monday)
     if rows:
-        podium     = await build_podium_image(rows, last_monday, bot)
-        embed_img  = discord.Embed(color=0x538D4E)
-        embed_img.set_image(url="attachment://podium.png")
-        embed_list = build_leaderboard(str(channel.guild.id), last_monday, channel.guild)
-        await channel.send(file=podium, embeds=[embed_img, embed_list])
+        podium = await build_podium_image(rows, last_monday, bot)
+        embed  = build_leaderboard(str(channel.guild.id), last_monday, channel.guild)
+        embed.set_image(url="attachment://podium.png")
+        await channel.send(file=podium, embed=embed)
 
 
 @weekly_leaderboard.before_loop

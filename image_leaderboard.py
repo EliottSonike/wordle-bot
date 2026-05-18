@@ -141,6 +141,8 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
             name = name[:15] + "…"
         _cx(d, cx, av_top - 30 * S, name, fName, WHITE)
 
+    # Downscale 2x → 1x with LANCZOS for smooth antialiased text
+    img = img.resize((W // SCALE, H // SCALE), Image.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
