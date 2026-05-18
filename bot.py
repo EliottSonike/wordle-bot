@@ -42,10 +42,17 @@ def resolve_username(guild: discord.Guild, user_id: str) -> str:
 
 # ── Events ─────────────────────────────────────────────────────────────────────
 
+GUILD_ID = int(os.getenv("GUILD_ID", "0"))
+
 @bot.event
 async def on_ready():
     init_db()
-    await bot.tree.sync()
+    if GUILD_ID:
+        guild = discord.Object(id=GUILD_ID)
+        bot.tree.copy_global_to(guild=guild)
+        await bot.tree.sync(guild=guild)
+    else:
+        await bot.tree.sync()
     weekly_leaderboard.start()
     print(f"[Wordle Bot] Connecté en tant que {bot.user} (id={bot.user.id})")
 
