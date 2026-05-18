@@ -15,8 +15,8 @@ WHITE    = (240, 240, 240)
 GRAY     = (160, 160, 165)
 RANK_CLR = {0: GOLD, 1: SILVER, 2: BRONZE}
 
-SCALE = 2          # render at 2x for sharpness
-W, H  = 620 * SCALE, 420 * SCALE
+SCALE = 2
+W, H  = 620 * SCALE, 500 * SCALE
 
 
 def _font(size, bold=False):
@@ -56,10 +56,10 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
     d   = ImageDraw.Draw(img)
 
     S = SCALE
-    fTitle  = _font(22 * S)
-    fName   = _font(28 * S, bold=True)
-    fPts    = _font(22 * S)
-    fRank   = _font(80 * S, bold=True)
+    fTitle  = _font(26 * S)
+    fName   = _font(34 * S, bold=True)
+    fPts    = _font(26 * S)
+    fRank   = _font(90 * S, bold=True)
 
     # Title
     title = f"Classement Wordle — {week_start}"
@@ -72,9 +72,9 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
     BW     = 170 * S
     GAP    = 12  * S
     BOTTOM = H - 30 * S
-    BH     = [180 * S, 230 * S, 140 * S]
-    AV_SZ  = 82  * S
-    AV_GAP = 12  * S
+    BH     = [220 * S, 280 * S, 170 * S]
+    AV_SZ  = 90  * S
+    AV_GAP = 14  * S
 
     start_x = (W - 3 * BW - 2 * GAP) // 2
 
