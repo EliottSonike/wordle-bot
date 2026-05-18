@@ -46,10 +46,7 @@ def extract_wordle_num(message) -> int:
                 m = _WORDLE_NUM.search(text)
                 if m:
                     return int(m.group(1))
-    # Fallback: derive from message date
-    m = _TRIGGER.search(message.content)
-    if m:
-        msg_date = message.created_at.date()
-        puzzle_date = msg_date - timedelta(days=1) if "yesterday" in m.group(1).lower() else msg_date
-        return (puzzle_date - _WORDLE_EPOCH).days
+    # Fallback: derive from message date (UTC date = puzzle date for midnight-local posts)
+    if _TRIGGER.search(message.content):
+        return (message.created_at.date() - _WORDLE_EPOCH).days
     return 0
