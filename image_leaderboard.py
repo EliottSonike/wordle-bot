@@ -119,8 +119,8 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
         d.rectangle([(bx, by), (bx + BW, by + cap_h)], fill=rc)
         d.rectangle([(bx + BW - 5 * S, by + cap_h), (bx + BW, BOTTOM)], fill=BLOCK_S)
 
-        _cx(d, cx - 3 * S, by + bh // 2 - 35 * S, str(ri + 1), fRank, rc)
-        _cx(d, cx, by + bh // 2 + 22 * S, f"{row['total_points']} pts", fPts, GRAY)
+        _cx(d, cx, by + bh // 2 - 75 * S, str(ri + 1), fRank, rc)
+        _cx(d, cx, by + bh // 2 + 60 * S, f"{row['total_points']} pts", fPts, GRAY)
 
         av_top  = by - AV_GAP - AV_SZ
         av_left = cx - AV_SZ // 2
