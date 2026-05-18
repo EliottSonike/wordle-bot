@@ -56,10 +56,10 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
     d   = ImageDraw.Draw(img)
 
     S = SCALE
-    fTitle  = _font(26 * S)
-    fName   = _font(34 * S, bold=True)
-    fPts    = _font(26 * S)
-    fRank   = _font(90 * S, bold=True)
+    fTitle  = _font(38 * S)
+    fName   = _font(46 * S, bold=True)
+    fPts    = _font(36 * S)
+    fRank   = _font(120 * S, bold=True)
 
     # Title
     title = f"Classement Wordle — {week_start}"
