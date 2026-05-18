@@ -94,11 +94,12 @@ async def on_message(message: discord.Message):
 @bot.tree.command(name="classement", description="Affiche le classement Wordle de la semaine en cours")
 async def cmd_classement(interaction: discord.Interaction):
     await interaction.response.defer()
-    rows = __import__("database").get_weekly_rows(str(interaction.guild_id), week_start())
+    from database import get_weekly_rows
+    rows = get_weekly_rows(str(interaction.guild_id), week_start())
     if not rows:
         await interaction.followup.send(f"Aucun score enregistré pour la semaine du **{week_start()}**.")
         return
-    file = await build_leaderboard_image(rows, week_start(), interaction.guild)
+    file = await build_leaderboard_image(rows, week_start(), bot)
     await interaction.followup.send(file=file)
 
 
@@ -111,11 +112,12 @@ async def cmd_classement_semaine(interaction: discord.Interaction, date: str):
         await interaction.response.send_message("Format invalide. Utilise YYYY-MM-DD (ex: 2025-05-12).", ephemeral=True)
         return
     await interaction.response.defer()
-    rows = __import__("database").get_weekly_rows(str(interaction.guild_id), date)
+    from database import get_weekly_rows
+    rows = get_weekly_rows(str(interaction.guild_id), date)
     if not rows:
         await interaction.followup.send(f"Aucun score enregistré pour la semaine du **{date}**.")
         return
-    file = await build_leaderboard_image(rows, date, interaction.guild)
+    file = await build_leaderboard_image(rows, date, bot)
     await interaction.followup.send(file=file)
 
 
@@ -183,9 +185,10 @@ async def cmd_forcer_classement(interaction: discord.Interaction):
         await interaction.response.send_message("Canal leaderboard introuvable.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    rows = __import__("database").get_weekly_rows(str(interaction.guild_id), week_start())
+    from database import get_weekly_rows
+    rows = get_weekly_rows(str(interaction.guild_id), week_start())
     if rows:
-        file = await build_leaderboard_image(rows, week_start(), interaction.guild)
+        file = await build_leaderboard_image(rows, week_start(), bot)
         await channel.send(file=file)
     await interaction.followup.send("Classement posté.", ephemeral=True)
 
@@ -205,9 +208,10 @@ async def weekly_leaderboard():
 
     # Since we fire on Monday, 7 days ago is exactly last Monday
     last_monday = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-    rows = __import__("database").get_weekly_rows(str(channel.guild.id), last_monday)
+    from database import get_weekly_rows
+    rows = get_weekly_rows(str(channel.guild.id), last_monday)
     if rows:
-        file = await build_leaderboard_image(rows, last_monday, channel.guild)
+        file = await build_leaderboard_image(rows, last_monday, bot)
         await channel.send(file=file)
 
 
