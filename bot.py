@@ -99,6 +99,7 @@ async def _send_leaderboard(interaction: discord.Interaction, ws: str):
         return
     podium = await build_podium_image(rows, ws, bot)
     embed  = build_leaderboard(str(interaction.guild_id), ws, interaction.guild)
+    embed.set_image(url="attachment://podium.png")
     await interaction.followup.send(file=podium, embed=embed)
 
 
@@ -189,6 +190,7 @@ async def cmd_forcer_classement(interaction: discord.Interaction):
     if rows:
         podium = await build_podium_image(rows, week_start(), bot)
         embed  = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
+        embed.set_image(url="attachment://podium.png")
         await channel.send(file=podium, embed=embed)
     await interaction.followup.send("Classement posté.", ephemeral=True)
 
@@ -213,6 +215,7 @@ async def weekly_leaderboard():
     if rows:
         podium = await build_podium_image(rows, last_monday, bot)
         embed  = build_leaderboard(str(channel.guild.id), last_monday, channel.guild)
+        embed.set_image(url="attachment://podium.png")
         await channel.send(file=podium, embed=embed)
 
 

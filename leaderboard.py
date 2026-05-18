@@ -88,7 +88,7 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
 
     total_wordles = rows[0]["total_wordles"]
     embed.title = f"🏆 Classement Wordle — semaine du {week_start}"
-    embed.description = f"_{total_wordles} Wordle(s) joués cette semaine_\n{_podium(rows, guild)}"
+    embed.description = f"_{total_wordles} Wordle(s) joués cette semaine_"
 
     # ── Full list ────────────────────────────────────────────────────
     lines = []
