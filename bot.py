@@ -116,9 +116,10 @@ async def cmd_mon_score(interaction: discord.Interaction):
         await interaction.response.send_message("Aucun score enregistré pour toi cette semaine.", ephemeral=True)
         return
 
-    lines = [f"**Tes scores cette semaine ({ws}) :**"]
+    total = sum(r["attempts"] for r in rows)
+    lines = [f"**Tes scores cette semaine ({ws}) — {total} pts :**"]
     for row in rows:
-        score_str = "X/6 *(échec)*" if row["attempts"] == 7 else f"{row['attempts']}/6"
+        score_str = "X/6 *(+7)*" if row["attempts"] == 7 else f"{row['attempts']}/6"
         lines.append(f"• Wordle #{row['wordle_num']} — {score_str}")
     await interaction.response.send_message("\n".join(lines), ephemeral=True)
 

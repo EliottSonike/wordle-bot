@@ -55,16 +55,32 @@ def insert_score(guild_id, user_id, username, wordle_num, attempts, week_start):
 def get_weekly_rows(guild_id, week_start):
     with get_db() as conn:
         return conn.execute(
-            """SELECT username,
-                      COUNT(*)                                          AS games,
-                      AVG(attempts)                                     AS avg_attempts,
-                      MIN(attempts)                                     AS best,
-                      SUM(CASE WHEN attempts = 7 THEN 1 ELSE 0 END)    AS failed
-               FROM scores
-               WHERE guild_id = ? AND week_start = ?
+            """WITH
+                 wordles AS (
+                   SELECT DISTINCT wordle_num FROM scores WHERE guild_id = ? AND week_start = ?
+                 ),
+                 players AS (
+                   SELECT DISTINCT user_id, username FROM scores WHERE guild_id = ? AND week_start = ?
+                 ),
+                 all_combos AS (
+                   SELECT p.user_id, p.username, w.wordle_num FROM players p CROSS JOIN wordles w
+                 ),
+                 filled AS (
+                   SELECT ac.user_id, ac.username,
+                          COALESCE(s.attempts, 7) AS attempts
+                   FROM all_combos ac
+                   LEFT JOIN scores s
+                     ON s.guild_id = ? AND s.user_id = ac.user_id AND s.wordle_num = ac.wordle_num
+                 )
+               SELECT username,
+                      SUM(attempts)                                        AS total_points,
+                      COUNT(*)                                             AS total_wordles,
+                      SUM(CASE WHEN attempts <= 6 THEN 1 ELSE 0 END)      AS played,
+                      MIN(attempts)                                        AS best
+               FROM filled
                GROUP BY user_id
-               ORDER BY avg_attempts ASC, games DESC""",
-            (guild_id, week_start),
+               ORDER BY total_points ASC, played DESC""",
+            (guild_id, week_start, guild_id, week_start, guild_id),
         ).fetchall()
 
 
