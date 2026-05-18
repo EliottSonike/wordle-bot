@@ -100,9 +100,7 @@ async def cmd_classement(interaction: discord.Interaction):
         await interaction.followup.send(f"Aucun score enregistré pour la semaine du **{week_start()}**.")
         return
     file = await build_leaderboard_image(rows, week_start(), bot)
-    embed = discord.Embed(color=0x538D4E)
-    embed.set_image(url="attachment://classement.png")
-    await interaction.followup.send(file=file, embed=embed)
+    await interaction.followup.send(file=file)
 
 
 @bot.tree.command(name="classement-semaine", description="Affiche le classement d'une semaine précise (format YYYY-MM-DD)")
@@ -191,9 +189,7 @@ async def cmd_forcer_classement(interaction: discord.Interaction):
     rows = get_weekly_rows(str(interaction.guild_id), week_start())
     if rows:
         file = await build_leaderboard_image(rows, week_start(), bot)
-        embed = discord.Embed(color=0x538D4E)
-        embed.set_image(url="attachment://classement.png")
-        await channel.send(file=file, embed=embed)
+        await channel.send(file=file)
     await interaction.followup.send("Classement posté.", ephemeral=True)
 
 
@@ -216,9 +212,7 @@ async def weekly_leaderboard():
     rows = get_weekly_rows(str(channel.guild.id), last_monday)
     if rows:
         file = await build_leaderboard_image(rows, last_monday, bot)
-        embed = discord.Embed(color=0x538D4E)
-        embed.set_image(url="attachment://classement.png")
-        await channel.send(file=file, embed=embed)
+        await channel.send(file=file)
 
 
 @weekly_leaderboard.before_loop
