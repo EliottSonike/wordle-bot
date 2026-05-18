@@ -92,8 +92,8 @@ async def on_message(message: discord.Message):
 
 @bot.tree.command(name="classement", description="Affiche le classement Wordle de la semaine en cours")
 async def cmd_classement(interaction: discord.Interaction):
-    text = build_leaderboard(str(interaction.guild_id), week_start())
-    await interaction.response.send_message(text)
+    embed = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
+    await interaction.response.send_message(embed=embed)
 
 
 @bot.tree.command(name="classement-semaine", description="Affiche le classement d'une semaine précise (format YYYY-MM-DD)")
@@ -104,8 +104,8 @@ async def cmd_classement_semaine(interaction: discord.Interaction, date: str):
     except ValueError:
         await interaction.response.send_message("Format invalide. Utilise YYYY-MM-DD (ex: 2025-05-12).", ephemeral=True)
         return
-    text = build_leaderboard(str(interaction.guild_id), date)
-    await interaction.response.send_message(text)
+    embed = build_leaderboard(str(interaction.guild_id), date, interaction.guild)
+    await interaction.response.send_message(embed=embed)
 
 
 @bot.tree.command(name="mon-score", description="Affiche tes scores Wordle de la semaine")
@@ -171,8 +171,8 @@ async def cmd_forcer_classement(interaction: discord.Interaction):
     if not channel:
         await interaction.response.send_message("Canal leaderboard introuvable.", ephemeral=True)
         return
-    text = build_leaderboard(str(interaction.guild_id), week_start())
-    await channel.send(text)
+    embed = build_leaderboard(str(interaction.guild_id), week_start(), interaction.guild)
+    await channel.send(embed=embed)
     await interaction.response.send_message("Classement posté.", ephemeral=True)
 
 
@@ -191,8 +191,8 @@ async def weekly_leaderboard():
 
     # Since we fire on Monday, 7 days ago is exactly last Monday
     last_monday = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-    text = build_leaderboard(str(channel.guild.id), last_monday)
-    await channel.send(text)
+    embed = build_leaderboard(str(channel.guild.id), last_monday, channel.guild)
+    await channel.send(embed=embed)
 
 
 @weekly_leaderboard.before_loop

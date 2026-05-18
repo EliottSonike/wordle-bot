@@ -72,7 +72,8 @@ def get_weekly_rows(guild_id, week_start):
                    LEFT JOIN scores s
                      ON s.guild_id = ? AND s.user_id = ac.user_id AND s.wordle_num = ac.wordle_num
                  )
-               SELECT username,
+               SELECT user_id,
+                      username,
                       SUM(attempts)                                        AS total_points,
                       COUNT(*)                                             AS total_wordles,
                       SUM(CASE WHEN attempts <= 6 THEN 1 ELSE 0 END)      AS played,
