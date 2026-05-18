@@ -141,19 +141,12 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 50):
     inserted = 0
     skipped = 0
 
-    total = 0
-    bot_messages = 0
     async for msg in channel.history(limit=limit):
-        total += 1
-        if msg.author.bot:
-            bot_messages += 1
-            print(f"[Backfill] Bot msg: author={msg.author.name!r} trigger={is_wordle_results(msg.content)}")
         if not msg.author.bot or msg.author.name != WORDLE_BOT_NAME:
             continue
         if not is_wordle_results(msg.content):
             continue
         wordle_num = extract_wordle_num(msg)
-        print(f"[Backfill] wordle_num={wordle_num} embeds={len(msg.embeds)} scores={parse_scores(msg.content)}")
         if wordle_num == 0:
             continue
         ws = week_start(msg.created_at)
@@ -164,7 +157,6 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 50):
             else:
                 skipped += 1
 
-    print(f"[Backfill] Total messages vus: {total}, dont bots: {bot_messages}")
     await interaction.followup.send(
         f"Backfill terminé : **{inserted}** score(s) ajouté(s), {skipped} déjà existant(s).",
         ephemeral=True,
