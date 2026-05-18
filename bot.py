@@ -153,6 +153,7 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 50):
         if not is_wordle_results(msg.content):
             continue
         wordle_num = extract_wordle_num(msg)
+        print(f"[Backfill] wordle_num={wordle_num} embeds={len(msg.embeds)} scores={parse_scores(msg.content)}")
         if wordle_num == 0:
             continue
         ws = week_start(msg.created_at)
