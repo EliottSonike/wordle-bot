@@ -15,7 +15,8 @@ WHITE    = (240, 240, 240)
 GRAY     = (160, 160, 165)
 RANK_CLR = {0: GOLD, 1: SILVER, 2: BRONZE}
 
-W, H = 620, 420
+SCALE = 2          # render at 2x for sharpness
+W, H  = 620 * SCALE, 420 * SCALE
 
 
 def _font(size, bold=False):
@@ -54,25 +55,26 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
     img = Image.new("RGB", (W, H), BG)
     d   = ImageDraw.Draw(img)
 
-    fTitle  = _font(16)
-    fName   = _font(17, bold=True)
-    fPts    = _font(14)
-    fRank   = _font(52, bold=True)
+    S = SCALE
+    fTitle  = _font(16 * S)
+    fName   = _font(17 * S, bold=True)
+    fPts    = _font(14 * S)
+    fRank   = _font(52 * S, bold=True)
 
     # Title
     title = f"Classement Wordle — {week_start}"
-    _cx(d, W // 2, 14, title, fTitle, GRAY)
+    _cx(d, W // 2, 14 * S, title, fTitle, GRAY)
 
     # Slot order: 2nd (left), 1st (center), 3rd (right)
     order = [1, 0, 2]
 
     # Block geometry
-    BW     = 170           # block width
-    GAP    = 12            # gap between blocks
-    BOTTOM = H - 30        # bottom of all blocks
-    BH     = [180, 230, 140]   # block heights: 2nd, 1st, 3rd
-    AV_SZ  = 82
-    AV_GAP = 12
+    BW     = 170 * S
+    GAP    = 12  * S
+    BOTTOM = H - 30 * S
+    BH     = [180 * S, 230 * S, 140 * S]
+    AV_SZ  = 82  * S
+    AV_GAP = 12  * S
 
     start_x = (W - 3 * BW - 2 * GAP) // 2
 
@@ -113,41 +115,31 @@ async def build_podium_image(rows, week_start: str, bot: discord.Client) -> disc
         # ── Block body ────────────────────────────────────────────
         d.rectangle([(bx, by), (bx + BW, BOTTOM)], fill=BLOCK)
 
-        # Gold/silver/bronze top cap (thick line + slight 3D)
-        cap_h = 10
+        cap_h = 10 * S
         d.rectangle([(bx, by), (bx + BW, by + cap_h)], fill=rc)
-        # Side shadow (right side darker)
-        d.rectangle([(bx + BW - 5, by + cap_h), (bx + BW, BOTTOM)], fill=BLOCK_S)
+        d.rectangle([(bx + BW - 5 * S, by + cap_h), (bx + BW, BOTTOM)], fill=BLOCK_S)
 
-        # Rank number inside block
-        _cx(d, cx - 3, by + bh // 2 - 35, str(ri + 1), fRank, rc)
+        _cx(d, cx - 3 * S, by + bh // 2 - 35 * S, str(ri + 1), fRank, rc)
+        _cx(d, cx, by + bh // 2 + 22 * S, f"{row['total_points']} pts", fPts, GRAY)
 
-        # Points inside block
-        pts_str = f"{row['total_points']} pts"
-        _cx(d, cx, by + bh // 2 + 22, pts_str, fPts, GRAY)
-
-        # ── Avatar above block ─────────────────────────────────────
-        av_top = by - AV_GAP - AV_SZ
+        av_top  = by - AV_GAP - AV_SZ
         av_left = cx - AV_SZ // 2
 
-        # Avatar ring
-        ring_sz = AV_SZ + 6
+        ring_sz  = AV_SZ + 6 * S
         ring_img = Image.new("RGBA", (ring_sz, ring_sz), (0, 0, 0, 0))
         ImageDraw.Draw(ring_img).ellipse((0, 0, ring_sz - 1, ring_sz - 1), fill=(*rc, 255))
-        img.paste(ring_img, (av_left - 3, av_top - 3),
-                  ring_img.split()[3] if ring_img.mode == "RGBA" else None)
+        img.paste(ring_img, (av_left - 3 * S, av_top - 3 * S),
+                  ring_img.split()[3])
 
         if uid in avatars:
             img.paste(avatars[uid], (av_left, av_top), avatars[uid])
         else:
             d.ellipse([(av_left, av_top), (av_left + AV_SZ, av_top + AV_SZ)], fill=(70, 70, 75))
 
-        # ── Name above avatar ─────────────────────────────────────
         name = uinfo.get(uid, (row["username"], None))[0]
         if len(name) > 16:
             name = name[:15] + "…"
-        name_y = av_top - 30
-        _cx(d, cx, name_y, name, fName, WHITE)
+        _cx(d, cx, av_top - 30 * S, name, fName, WHITE)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
