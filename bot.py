@@ -139,10 +139,10 @@ async def cmd_mon_score(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="backfill", description="[Admin] Retraite les N derniers messages du salon Wordle (défaut: 50)")
-@app_commands.describe(limit="Nombre de messages à relire (1-200)")
+@app_commands.describe(limit="Nombre de messages à relire (1-2000)")
 @app_commands.default_permissions(administrator=True)
-async def cmd_backfill(interaction: discord.Interaction, limit: int = 50):
-    if not 1 <= limit <= 200:
+async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
+    if not 1 <= limit <= 2000:
         await interaction.response.send_message("Le nombre de messages doit être entre 1 et 200.", ephemeral=True)
         return
 
