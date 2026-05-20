@@ -60,7 +60,7 @@ def get_weekly_rows(guild_id, week_start):
                    SELECT DISTINCT wordle_num FROM scores WHERE guild_id = ? AND week_start = ?
                  ),
                  players AS (
-                   SELECT DISTINCT user_id, username FROM scores WHERE guild_id = ? AND week_start = ?
+                   SELECT user_id, MAX(username) AS username FROM scores WHERE guild_id = ? AND week_start = ? GROUP BY user_id
                  ),
                  all_combos AS (
                    SELECT p.user_id, p.username, w.wordle_num FROM players p CROSS JOIN wordles w
