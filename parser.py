@@ -28,12 +28,11 @@ def parse_scores(content: str) -> list:
     """
     results = []
     for line in content.splitlines():
-        m = _SCORE_LINE.search(line)
+        m = re.search(r"(\d|X)/6\*?\s*:", line, re.IGNORECASE)
         if not m:
             continue
-        score_str, mentions_part = m.group(1), m.group(2)
-        attempts = 7 if score_str.upper() == "X" else int(score_str)
-        for uid in _MENTION.findall(mentions_part):
+        attempts = 7 if m.group(1).upper() == "X" else int(m.group(1))
+        for uid in _MENTION.findall(line[m.end():]):
             results.append((uid, attempts))
     return results
 
