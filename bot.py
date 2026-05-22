@@ -47,7 +47,7 @@ def resolve_plain_mentions(content: str, guild_id: str, known_ids: set) -> list:
         attempts = 7 if m.group(1).upper() == "X" else int(m.group(1))
         rest = _re.sub(r"<@!?\d+>", "", line[m.end():])
         for raw in rest.split("@"):
-            name = raw.strip()
+            name = raw.strip().replace("\\", "")
             if not name:
                 continue
             uid = get_user_id_by_name(guild_id, name)
