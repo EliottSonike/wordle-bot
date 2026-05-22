@@ -5,7 +5,8 @@ from discord import app_commands
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
-from database import init_db, insert_score, get_user_scores
+from database import init_db, insert_score, get_user_scores, get_user_id_by_name
+import re as _re
 from parser import is_wordle_results, parse_scores, extract_wordle_num
 from leaderboard import build_leaderboard
 from image_leaderboard import build_podium_image
@@ -34,6 +35,26 @@ def week_start(dt: datetime = None) -> str:
         dt = datetime.now(timezone.utc)
     monday = dt - timedelta(days=dt.weekday())
     return monday.strftime("%Y-%m-%d")
+
+
+def resolve_plain_mentions(content: str, guild_id: str, known_ids: set) -> list:
+    """Try to resolve plain-text @Name mentions to (user_id, attempts) pairs."""
+    results = []
+    for line in content.splitlines():
+        m = _re.search(r"(\d|X)/6\*?\s*:", line, _re.IGNORECASE)
+        if not m:
+            continue
+        attempts = 7 if m.group(1).upper() == "X" else int(m.group(1))
+        rest = _re.sub(r"<@!?\d+>", "", line[m.end():])
+        for raw in rest.split("@"):
+            name = raw.strip()
+            if not name:
+                continue
+            uid = get_user_id_by_name(guild_id, name)
+            if uid and uid not in known_ids:
+                results.append((uid, attempts))
+                known_ids.add(uid)
+    return results
 
 
 def resolve_username(guild: discord.Guild, user_id: str) -> str:
@@ -80,7 +101,10 @@ async def on_message(message: discord.Message):
     saved = 0
 
     guild_id = str(message.guild.id)
-    for user_id, attempts in parse_scores(message.content):
+    id_scores = parse_scores(message.content)
+    known_ids = {uid for uid, _ in id_scores}
+    plain_scores = resolve_plain_mentions(message.content, guild_id, known_ids)
+    for user_id, attempts in id_scores + plain_scores:
         username = resolve_username(message.guild, user_id)
         if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
             saved += 1
@@ -165,7 +189,10 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         if wordle_num == 0:
             continue
         ws = week_start(msg.created_at)
-        for user_id, attempts in parse_scores(msg.content):
+        id_scores = parse_scores(msg.content)
+        known_ids = {uid for uid, _ in id_scores}
+        plain_scores = resolve_plain_mentions(msg.content, guild_id, known_ids)
+        for user_id, attempts in id_scores + plain_scores:
             username = resolve_username(interaction.guild, user_id)
             if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
                 inserted += 1

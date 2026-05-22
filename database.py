@@ -85,6 +85,16 @@ def get_weekly_rows(guild_id, week_start):
         ).fetchall()
 
 
+def get_user_id_by_name(guild_id: str, name: str) -> str | None:
+    """Resolve a display name to a user_id using historical scores."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT user_id FROM scores WHERE guild_id = ? AND username = ? LIMIT 1",
+            (guild_id, name),
+        ).fetchone()
+        return row["user_id"] if row else None
+
+
 def get_user_scores(guild_id, user_id, week_start):
     with get_db() as conn:
         return conn.execute(
