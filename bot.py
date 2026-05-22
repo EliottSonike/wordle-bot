@@ -5,7 +5,7 @@ from discord import app_commands
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
-from database import init_db, insert_score, get_user_scores, get_user_id_by_name
+from database import init_db, insert_score, get_user_scores, get_user_id_by_name, upsert_username
 import re as _re
 from parser import is_wordle_results, parse_scores, extract_wordle_num
 from leaderboard import build_leaderboard
@@ -106,6 +106,7 @@ async def on_message(message: discord.Message):
     plain_scores = resolve_plain_mentions(message.content, guild_id, known_ids)
     for user_id, attempts in id_scores + plain_scores:
         username = resolve_username(message.guild, user_id)
+        upsert_username(guild_id, user_id, username)
         if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
             saved += 1
 
@@ -194,6 +195,7 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         plain_scores = resolve_plain_mentions(msg.content, guild_id, known_ids)
         for user_id, attempts in id_scores + plain_scores:
             username = resolve_username(interaction.guild, user_id)
+            upsert_username(guild_id, user_id, username)
             if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
                 inserted += 1
             else:

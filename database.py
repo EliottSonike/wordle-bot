@@ -25,6 +25,15 @@ def init_db():
                 UNIQUE(guild_id, user_id, wordle_num)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_names (
+                guild_id   TEXT NOT NULL,
+                user_id    TEXT NOT NULL,
+                username   TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (guild_id, user_id)
+            )
+        """)
         conn.commit()
 
 
@@ -85,9 +94,29 @@ def get_weekly_rows(guild_id, week_start):
         ).fetchall()
 
 
-def get_user_id_by_name(guild_id: str, name: str) -> str | None:
-    """Resolve a display name to a user_id using historical scores."""
+def upsert_username(guild_id: str, user_id: str, username: str):
+    """Keep user_names up to date with the latest display name."""
     with get_db() as conn:
+        conn.execute(
+            """INSERT INTO user_names (guild_id, user_id, username, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                   username   = excluded.username,
+                   updated_at = excluded.updated_at""",
+            (guild_id, user_id, username, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+
+
+def get_user_id_by_name(guild_id: str, name: str) -> str | None:
+    """Resolve a display name to a user_id. Checks user_names first, then scores."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT user_id FROM user_names WHERE guild_id = ? AND username = ? LIMIT 1",
+            (guild_id, name),
+        ).fetchone()
+        if row:
+            return row["user_id"]
         row = conn.execute(
             "SELECT user_id FROM scores WHERE guild_id = ? AND username = ? LIMIT 1",
             (guild_id, name),
