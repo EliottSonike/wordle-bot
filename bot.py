@@ -163,6 +163,34 @@ async def cmd_mon_score(interaction: discord.Interaction):
     await interaction.response.send_message("\n".join(lines), ephemeral=True)
 
 
+@bot.tree.command(name="add-score", description="[Admin] Ajoute manuellement un score pour un joueur")
+@app_commands.describe(
+    joueur="Mention du joueur (@pseudo)",
+    wordle="Numéro du Wordle (ex: 1797)",
+    tentatives="Nombre de tentatives (1-6, ou 7 pour échec)",
+)
+@app_commands.default_permissions(administrator=True)
+async def cmd_add_score(interaction: discord.Interaction, joueur: discord.Member, wordle: int, tentatives: int):
+    if not 1 <= tentatives <= 7:
+        await interaction.response.send_message("Les tentatives doivent être entre 1 et 7 (7 = échec).", ephemeral=True)
+        return
+
+    guild_id = str(interaction.guild_id)
+    user_id  = str(joueur.id)
+    username = joueur.display_name
+    ws       = week_start()
+
+    upsert_username(guild_id, user_id, username)
+    if insert_score(guild_id, user_id, username, wordle, tentatives, ws):
+        await interaction.response.send_message(
+            f"Score ajouté : **{username}** — Wordle #{wordle} — {tentatives}/6", ephemeral=True
+        )
+    else:
+        await interaction.response.send_message(
+            f"Score déjà existant pour **{username}** sur le Wordle #{wordle}.", ephemeral=True
+        )
+
+
 @bot.tree.command(name="backfill", description="[Admin] Retraite les N derniers messages du salon Wordle (défaut: 50)")
 @app_commands.describe(limit="Nombre de messages à relire (1-2000)")
 @app_commands.default_permissions(administrator=True)
