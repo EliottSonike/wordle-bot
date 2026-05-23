@@ -194,12 +194,12 @@ async def cmd_add_score(interaction: discord.Interaction, joueur: discord.Member
         )
 
 
-@bot.tree.command(name="backfill", description="[Admin] Retraite les N derniers messages du salon Wordle (défaut: 50)")
-@app_commands.describe(limit="Nombre de messages à relire (1-2000)")
+@bot.tree.command(name="backfill", description="[Admin] Retraite les messages du salon Wordle")
+@app_commands.describe(semaines="Nombre de semaines à relire (défaut: 4, max: 52)")
 @app_commands.default_permissions(administrator=True)
-async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
-    if not 1 <= limit <= 2000:
-        await interaction.response.send_message("Le nombre de messages doit être entre 1 et 200.", ephemeral=True)
+async def cmd_backfill(interaction: discord.Interaction, semaines: int = 4):
+    if not 1 <= semaines <= 52:
+        await interaction.response.send_message("Le nombre de semaines doit être entre 1 et 52.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=True)
@@ -212,8 +212,11 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         await interaction.followup.send("Canal Wordle introuvable.", ephemeral=True)
         return
 
+    cutoff = datetime.now(timezone.utc) - timedelta(weeks=semaines)
     name_cache: dict[str, str] = {}
-    async for msg in channel.history(limit=limit):
+    upserted: set[str] = set()
+
+    async for msg in channel.history(limit=None, after=cutoff):
         if not msg.author.bot or msg.author.name != WORDLE_BOT_NAME:
             continue
         if not is_wordle_results(msg.content):
@@ -229,14 +232,16 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
             if user_id not in name_cache:
                 name_cache[user_id] = await resolve_username(interaction.guild, user_id)
             username = name_cache[user_id]
-            upsert_username(guild_id, user_id, username)
+            if user_id not in upserted:
+                upsert_username(guild_id, user_id, username)
+                upserted.add(user_id)
             if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
                 inserted += 1
             else:
                 skipped += 1
 
     await interaction.followup.send(
-        f"Backfill terminé : **{inserted}** score(s) ajouté(s), {skipped} déjà existant(s).",
+        f"Backfill terminé ({semaines} sem.) : **{inserted}** score(s) ajouté(s), {skipped} déjà existant(s).",
         ephemeral=True,
     )
 
