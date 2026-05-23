@@ -212,6 +212,7 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         await interaction.followup.send("Canal Wordle introuvable.", ephemeral=True)
         return
 
+    name_cache: dict[str, str] = {}
     async for msg in channel.history(limit=limit):
         if not msg.author.bot or msg.author.name != WORDLE_BOT_NAME:
             continue
@@ -225,7 +226,9 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         known_ids = {uid for uid, _ in id_scores}
         plain_scores = resolve_plain_mentions(msg.content, guild_id, known_ids)
         for user_id, attempts in id_scores + plain_scores:
-            username = await resolve_username(interaction.guild, user_id)
+            if user_id not in name_cache:
+                name_cache[user_id] = await resolve_username(interaction.guild, user_id)
+            username = name_cache[user_id]
             upsert_username(guild_id, user_id, username)
             if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
                 inserted += 1

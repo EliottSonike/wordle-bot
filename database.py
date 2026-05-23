@@ -83,7 +83,9 @@ def get_weekly_rows(guild_id, week_start):
                  ),
                  filled AS (
                    SELECT ac.user_id, ac.username,
-                          COALESCE(s.attempts, 7) AS attempts
+                          COALESCE(s.attempts, 7)                              AS attempts,
+                          CASE WHEN s.attempts IS NULL THEN 1 ELSE 0 END       AS is_absent,
+                          CASE WHEN s.attempts = 7    THEN 1 ELSE 0 END        AS is_failure
                    FROM all_combos ac
                    LEFT JOIN scores s
                      ON s.guild_id = ? AND s.user_id = ac.user_id AND s.wordle_num = ac.wordle_num
@@ -93,6 +95,8 @@ def get_weekly_rows(guild_id, week_start):
                       SUM(attempts)                                        AS total_points,
                       COUNT(*)                                             AS total_wordles,
                       SUM(CASE WHEN attempts <= 6 THEN 1 ELSE 0 END)      AS played,
+                      SUM(is_absent)                                       AS absences,
+                      SUM(is_failure)                                      AS failures,
                       MIN(attempts)                                        AS best
                FROM filled
                GROUP BY user_id

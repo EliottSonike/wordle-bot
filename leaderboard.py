@@ -95,11 +95,12 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
     for i, row in enumerate(rows):
         rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i + 1}.`"
         best_str = "X" if row["best"] == 7 else str(row["best"])
-        missed = row["total_wordles"] - row["played"]
         name = _name(row, guild)
         details = f"{row['total_points']} pts · {row['played']}/{total_wordles} · meilleur {best_str}/6"
-        if missed:
-            details += f" · _{missed} absent(s)_"
+        if row["absences"]:
+            details += f" · _{row['absences']} absent(s)_"
+        if row["failures"]:
+            details += f" · _{row['failures']} échec(s)_"
         lines.append(f"{rank} {name} — {details}")
 
     embed.add_field(name="Classement complet", value="\n".join(lines), inline=False)
