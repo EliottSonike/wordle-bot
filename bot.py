@@ -57,9 +57,15 @@ def resolve_plain_mentions(content: str, guild_id: str, known_ids: set) -> list:
     return results
 
 
-def resolve_username(guild: discord.Guild, user_id: str) -> str:
+async def resolve_username(guild: discord.Guild, user_id: str) -> str:
     member = guild.get_member(int(user_id))
-    return member.display_name if member else f"<@{user_id}>"
+    if member:
+        return member.display_name
+    try:
+        user = await bot.fetch_user(int(user_id))
+        return user.display_name
+    except Exception:
+        return f"<@{user_id}>"
 
 
 # ── Events ─────────────────────────────────────────────────────────────────────
@@ -81,9 +87,6 @@ async def on_ready():
 
 @bot.event
 async def on_message(message: discord.Message):
-    # Only process messages from the Wordle APP in the configured channel
-    if message.channel.id != WORDLE_CHANNEL_ID:
-        return
     if not message.author.bot:
         return
     if message.author.name != WORDLE_BOT_NAME:
@@ -105,7 +108,7 @@ async def on_message(message: discord.Message):
     known_ids = {uid for uid, _ in id_scores}
     plain_scores = resolve_plain_mentions(message.content, guild_id, known_ids)
     for user_id, attempts in id_scores + plain_scores:
-        username = resolve_username(message.guild, user_id)
+        username = await resolve_username(message.guild, user_id)
         upsert_username(guild_id, user_id, username)
         if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
             saved += 1
@@ -200,14 +203,14 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         return
 
     await interaction.response.defer(ephemeral=True)
+    guild_id = str(interaction.guild_id)
+    inserted = 0
+    skipped = 0
+
     channel = bot.get_channel(WORDLE_CHANNEL_ID)
     if not channel:
         await interaction.followup.send("Canal Wordle introuvable.", ephemeral=True)
         return
-
-    guild_id = str(interaction.guild_id)
-    inserted = 0
-    skipped = 0
 
     async for msg in channel.history(limit=limit):
         if not msg.author.bot or msg.author.name != WORDLE_BOT_NAME:
@@ -222,7 +225,7 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         known_ids = {uid for uid, _ in id_scores}
         plain_scores = resolve_plain_mentions(msg.content, guild_id, known_ids)
         for user_id, attempts in id_scores + plain_scores:
-            username = resolve_username(interaction.guild, user_id)
+            username = await resolve_username(interaction.guild, user_id)
             upsert_username(guild_id, user_id, username)
             if insert_score(guild_id, user_id, username, wordle_num, attempts, ws):
                 inserted += 1
@@ -233,6 +236,34 @@ async def cmd_backfill(interaction: discord.Interaction, limit: int = 200):
         f"Backfill terminé : **{inserted}** score(s) ajouté(s), {skipped} déjà existant(s).",
         ephemeral=True,
     )
+
+
+@bot.tree.command(name="fix-usernames", description="[Admin] Corrige les pseudos stockés comme <@id> dans la base")
+@app_commands.default_permissions(administrator=True)
+async def cmd_fix_usernames(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    from database import get_db
+    guild_id = str(interaction.guild_id)
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT user_id FROM scores WHERE username LIKE '<@%'"
+        ).fetchall()
+
+    fixed = 0
+    for row in rows:
+        uid = row["user_id"]
+        name = await resolve_username(interaction.guild, uid)
+        if not name.startswith("<@"):
+            upsert_username(guild_id, uid, name)
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE scores SET username = ? WHERE user_id = ? AND username LIKE '<@%'",
+                    (name, uid),
+                )
+                conn.commit()
+            fixed += 1
+
+    await interaction.followup.send(f"Correction terminée : **{fixed}** pseudo(s) mis à jour.", ephemeral=True)
 
 
 @bot.tree.command(name="forcer-classement", description="[Admin] Poste le classement de la semaine en cours dans le salon leaderboard")

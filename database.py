@@ -1,12 +1,19 @@
+import re as _re
 import sqlite3
 from datetime import datetime, timezone
 
 DB_PATH = "wordle.db"
 
 
+def _normalize_name(name: str) -> str:
+    """Lowercase + strip punctuation for fuzzy display-name matching."""
+    return _re.sub(r'[\.\\ \-_]', '', name).lower()
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.create_function("normalize_name", 1, _normalize_name)
     return conn
 
 
@@ -109,16 +116,16 @@ def upsert_username(guild_id: str, user_id: str, username: str):
 
 
 def get_user_id_by_name(guild_id: str, name: str) -> str | None:
-    """Resolve a display name to a user_id. Checks user_names first, then scores."""
+    """Resolve a display name to a user_id (case-insensitive, punctuation-ignored)."""
     with get_db() as conn:
         row = conn.execute(
-            "SELECT user_id FROM user_names WHERE guild_id = ? AND username = ? LIMIT 1",
+            "SELECT user_id FROM user_names WHERE guild_id = ? AND normalize_name(username) = normalize_name(?) LIMIT 1",
             (guild_id, name),
         ).fetchone()
         if row:
             return row["user_id"]
         row = conn.execute(
-            "SELECT user_id FROM scores WHERE guild_id = ? AND username = ? LIMIT 1",
+            "SELECT user_id FROM scores WHERE guild_id = ? AND normalize_name(username) = normalize_name(?) LIMIT 1",
             (guild_id, name),
         ).fetchone()
         return row["user_id"] if row else None
