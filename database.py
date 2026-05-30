@@ -100,7 +100,7 @@ def get_weekly_rows(guild_id, week_start):
                       MIN(attempts)                                        AS best
                FROM filled
                GROUP BY user_id
-               ORDER BY total_points ASC, played DESC""",
+               ORDER BY total_points ASC, best ASC, (absences + failures) ASC""",
             (guild_id, week_start, guild_id, week_start, guild_id),
         ).fetchall()
 

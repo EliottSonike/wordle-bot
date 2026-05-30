@@ -90,8 +90,15 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
     embed.title = f"🏆 Classement Wordle — semaine du {week_start}"
 
     lines = [f"_{total_wordles} Wordle(s) joués cette semaine_", ""]
+    medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+    prev_key = None
+    rank_num = 0
     for i, row in enumerate(rows):
-        rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i + 1}.`"
+        key = (row["total_points"], row["best"], row["absences"] + row["failures"])
+        if key != prev_key:
+            rank_num = i + 1
+            prev_key = key
+        rank = medals.get(rank_num, f"`{rank_num}.`")
         best_str = "X" if row["best"] == 7 else str(row["best"])
         name = _name(row, guild)
         details = f"{row['total_points']} pts · {row['played']}/{total_wordles} · meilleur {best_str}/6"
