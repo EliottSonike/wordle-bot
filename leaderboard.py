@@ -88,10 +88,8 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
 
     total_wordles = rows[0]["total_wordles"]
     embed.title = f"🏆 Classement Wordle — semaine du {week_start}"
-    embed.description = f"_{total_wordles} Wordle(s) joués cette semaine_"
 
-    # ── Full list ────────────────────────────────────────────────────
-    lines = []
+    lines = [f"_{total_wordles} Wordle(s) joués cette semaine_", ""]
     for i, row in enumerate(rows):
         rank = ["🥇", "🥈", "🥉"][i] if i < 3 else f"`{i + 1}.`"
         best_str = "X" if row["best"] == 7 else str(row["best"])
@@ -103,5 +101,5 @@ def build_leaderboard(guild_id: str, week_start: str, guild: discord.Guild = Non
             details += f" · _{row['failures']} échec(s)_"
         lines.append(f"{rank} {name} — {details}")
 
-    embed.add_field(name="Classement complet", value="\n".join(lines), inline=False)
+    embed.description = "\n".join(lines)
     return embed
